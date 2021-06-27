@@ -33,8 +33,6 @@ export interface IArtifact {
   substats: Substat[],
   location: CharacterKey | "",
 
-  currentEfficiency?: number,
-  maximumEfficiency?: number,
   lock: boolean,
 }
 
@@ -44,7 +42,6 @@ export interface Substat {
 
   rolls?: number[],
   efficiency?: number,
-  accurateValue?: number,
 }
 export type StatKey = MainStatKey | SubstatKey | ReactionDMGStatKey | MoveDMGStatKey | ElementalRESStatKey | SpecializedStatKey
 

@@ -167,26 +167,20 @@ export default class Artifact {
       else {
         errors.push(`${numStars}-star artifact (level ${level}) should have no more than ${maximum - remaining} rolls. It currently has ${total} rolls.`)
       }
-    } else {
-      // Found valid build, filling missing data
-      for (const substat of substats)
-        substat.accurateValue = substat.rolls!.reduce((sum, cur) => sum + cur, 0)
-      const { currentEfficiency, maximumEfficiency } = Artifact.getArtifactEfficiency(substats, numStars, level)
-      state.currentEfficiency = currentEfficiency
-      state.maximumEfficiency = maximumEfficiency
     }
 
     return errors
   }
-  static getArtifactEfficiency(substats: Substat[], numStars: Rarity, level: number) {
+  static getArtifactEfficiency(substats: Substat[], numStars: Rarity, level: number, filter: Set<SubstatKey>) {
     if (!numStars) return { currentEfficiency: 0, maximumEfficiency: 0 }
     // Relative to max star, so comparison between different * makes sense.
     let totalRolls = Artifact.totalPossibleRolls(maxStar);
+    // TODO: Rescale rollsRemaining when there are empty slots, and when there are no relevant substat
     let rollsRemaining = Artifact.rollsRemaining(level, numStars);
-    let current = substats.reduce((sum, { key, accurateValue }) => sum + (key ? (accurateValue! / ArtifactSubstatsMinMax[key].max[maxStar]) : 0), 0)
-    let maximum = current + rollsRemaining
-    let currentEfficiency = current * 100 / totalRolls
-    let maximumEfficiency = maximum * 100 / totalRolls
+    let current = substats.reduce((sum, { key, rolls, efficiency }) => sum + (key && filter.has(key) ? (efficiency! * rolls!.length) : 0), 0)
+    let maximum = current + 100 * rollsRemaining
+    let currentEfficiency = current / totalRolls
+    let maximumEfficiency = maximum / totalRolls
     return { currentEfficiency, maximumEfficiency }
   }
 

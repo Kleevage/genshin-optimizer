@@ -15,7 +15,7 @@ import ArtifactDatabase from '../Database/ArtifactDatabase';
 import CharacterDatabase from '../Database/CharacterDatabase';
 import InfoComponent from '../Components/InfoComponent';
 import Stat from '../Stat';
-import { allMainStatKeys } from '../Types/artifact';
+import { allMainStatKeys, allSubstats, IArtifact } from '../Types/artifact';
 import { allArtifactRarities, allSlotKeys } from '../Types/consts';
 import { useForceUpdate, usePromise } from '../Util/ReactUtil';
 import { clamp, loadFromLocalStorage, saveToLocalStorage } from '../Util/Util';
@@ -27,6 +27,7 @@ import SlotNameWithIcon from './Component/SlotNameWIthIcon';
 
 const InfoDisplay = React.lazy(() => import('./InfoDisplay'));
 const sortKeys = ["quality", "level", "efficiency", "mefficiency"]
+const allSubstatFilter = new Set(allSubstats)
 
 const initialFilter = () => ({
   filterArtSetKey: "",
@@ -85,7 +86,7 @@ export default function ArtifactDisplay(props) {
   const { artifacts, totalArtNum, numUnequip, numUnlock, numLock } = useMemo(() => {
     const { filterArtSetKey, filterSlotKey, filterMainStatKey, filterStars, filterLevelLow, filterLevelHigh, filterSubstats = initialFilter().filterSubstats, filterLocation = "", filterLocked = "", sortType = sortKeys[0], ascending = false } = filters
     const artifactDB = ArtifactDatabase.getArtifactDatabase() || {}
-    const artifacts = Object.values(artifactDB).filter(art => {
+    const artifacts: IArtifact[] = Object.values(artifactDB).filter(art => {
       if (filterLocked) {
         if (filterLocked === "locked" && !art.lock) return false
         if (filterLocked === "unlocked" && art.lock) return false
@@ -104,30 +105,23 @@ export default function ArtifactDisplay(props) {
       for (const filterKey of filterSubstats)
         if (filterKey && !art.substats.some(substat => substat.key === filterKey)) return false;
       return true
-    }).sort((a, b) => {
-      let sortNum = 0
+    }).map((art) => {
       switch (sortType) {
-        case "quality":
-          sortNum = a.numStars - b.numStars
-          if (sortNum === 0)
-            sortNum = a.level - b.level
-          break;
-        case "level":
-          sortNum = a.level - b.level
-          if (sortNum === 0)
-            sortNum = a.numStars - b.numStars
-          break;
-        case "efficiency":
-          sortNum = a.currentEfficiency! - b.currentEfficiency!
-          break;
-        case "mefficiency":
-          sortNum = a.maximumEfficiency! - b.maximumEfficiency!
-          break;
-        default:
-          break;
+        case "quality": return { value: [art.numStars], art }
+        case "level": return { value: [art.level, art.numStars], art }
+        case "efficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, allSubstatFilter).currentEfficiency], art }
+        case "mefficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, allSubstatFilter).maximumEfficiency], art }
       }
-      return sortNum * (ascending ? 1 : -1)
-    })
+      return { value: [0], art }
+    }).sort((a, b) => {
+      for (let i = 0; i < a.value.length; i++) {
+        if (a.value[i] !== b.value[i]) {
+          console.log(a.value[i], b.value[i], ascending)
+          return (a.value[i] - b.value[i]) * (ascending ? 1 : -1)
+        }
+      }
+      return 0
+    }).map(item => item.art)
     const numUnequip = artifacts.reduce((a, art) => a + (art.location ? 1 : 0), 0)
     const numUnlock = artifacts.reduce((a, art) => a + (art.lock ? 1 : 0), 0)
     const numLock = artifacts.length - numUnlock
