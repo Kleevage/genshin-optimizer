@@ -76,7 +76,7 @@ export default function ArtifactEditor({ artifactIdToEdit, cancelEdit }) {
   const { dupId, isDup } = useMemo(() => checkDuplicate(artifact), [artifact])
   const { numStars = 5, level = 0, slotKey = "flower" } = artifact ?? {}
   const errMsgs = artifact ? Artifact.substatsValidation(artifact) : []
-  const { currentEfficiency = 0, maximumEfficiency = 0 } = artifact ? Artifact.getArtifactEfficiency(artifact.substats, artifact.numStars, artifact.level, allSubstatFilter) : {}
+  const { currentEfficiency = 0, maximumEfficiency = 0 } = artifact ? Artifact.getArtifactEfficiency(artifact, allSubstatFilter) : {}
   return <Card bg="darkcontent" text={"lightfont" as any}>
     <Card.Header><Trans t={t} i18nKey="editor.title" >Artifact Editor</Trans></Card.Header>
     <Card.Body>

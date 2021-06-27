@@ -1,10 +1,10 @@
-import { ArtifactMainStatsData, ArtifactSlotsData, ArtifactStarsData, ArtifactSubstatsData, ArtifactSubstatsMinMax } from '../Data/ArtifactData';
+import { ArtifactMainStatsData, ArtifactSlotsData, ArtifactStarsData, ArtifactSubstatMaxRollEfficiency, ArtifactSubstatMaxRolls, ArtifactSubstatsData } from '../Data/ArtifactData';
 import ArtifactDatabase from '../Database/ArtifactDatabase';
 import CharacterDatabase from '../Database/CharacterDatabase';
 import { ArtifactSubstatLookupTable } from '../Data/ArtifactLookupTable';
 import Stat from '../Stat';
 import { clampPercent, closeEnoughFloat, closeEnoughInt, deepClone, evalIfFunc } from '../Util/Util';
-import { CompressMainStatKey, IArtifact, MainStatKey, StatDict, Substat, SubstatKey } from '../Types/artifact';
+import { CompressMainStatKey, IArtifact, MainStatKey, StatDict, SubstatKey } from '../Types/artifact';
 import { SlotKey, Rarity, ArtifactSetKey, allSlotKeys, SetNum, CharacterKey } from '../Types/consts';
 import ICalculatedStats from '../Types/ICalculatedStats';
 import { ArtifactSheet } from './ArtifactSheet';
@@ -64,7 +64,8 @@ export default class Artifact {
     return { low: data.subsBaselow, high: data.subBaseHigh, numUpgrades: data.numUpgradesOrUnlocks }
   }
 
-  static maxSubstatValues = (statKey: SubstatKey, numStars = maxStar): number => ArtifactSubstatsMinMax[statKey].max[numStars]
+  static maxSubstatValues = (statKey: SubstatKey, numStars = maxStar): number => ArtifactSubstatMaxRolls[numStars]![statKey]
+  static maxSubstatRollEfficiency = (numStar: Rarity): number => ArtifactSubstatMaxRollEfficiency[numStar]
   static getSubstatKeys = (): SubstatKey[] => Object.keys(ArtifactSubstatsData) as SubstatKey[]
   static substatCloseEnough = (key: SubstatKey, value1: number, value2: number): boolean => {
     if (Stat.getStatUnit(key) === "%")
@@ -171,16 +172,23 @@ export default class Artifact {
 
     return errors
   }
-  static getArtifactEfficiency(substats: Substat[], numStars: Rarity, level: number, filter: Set<SubstatKey>) {
-    if (!numStars) return { currentEfficiency: 0, maximumEfficiency: 0 }
+  static getArtifactEfficiency(artifact: IArtifact, filter: Set<SubstatKey>) {
+    const { substats, numStars, level } = artifact
     // Relative to max star, so comparison between different * makes sense.
-    let totalRolls = Artifact.totalPossibleRolls(maxStar);
-    // TODO: Rescale rollsRemaining when there are empty slots, and when there are no relevant substat
-    let rollsRemaining = Artifact.rollsRemaining(level, numStars);
-    let current = substats.reduce((sum, { key, rolls, efficiency }) => sum + (key && filter.has(key) ? (efficiency! * rolls!.length) : 0), 0)
-    let maximum = current + 100 * rollsRemaining
-    let currentEfficiency = current / totalRolls
-    let maximumEfficiency = maximum / totalRolls
+    const totalRolls = Artifact.totalPossibleRolls(maxStar);
+    const current = substats.filter(({ key }) => key && filter.has(key)).reduce((sum, { rolls, efficiency }) => sum + (efficiency! * rolls!.length), 0)
+
+    const rollsRemaining = Artifact.rollsRemaining(level, numStars);
+    const emptySlotCount = substats.filter(s => !s.key).length
+    const matchedSlotCount = substats.filter(s => s.key && filter.has(s.key)).length
+    const unusedFilterCount = filter.size - matchedSlotCount
+    let maximum
+    if (emptySlotCount && unusedFilterCount) maximum = current + Artifact.maxSubstatRollEfficiency(numStars) * rollsRemaining // Rolls into good empty slot
+    else if (matchedSlotCount) maximum = current + Artifact.maxSubstatRollEfficiency(numStars) * (rollsRemaining - emptySlotCount) // Rolls into existing matched slot
+    else maximum = current // No possible roll
+
+    const currentEfficiency = current / totalRolls
+    const maximumEfficiency = maximum / totalRolls
     return { currentEfficiency, maximumEfficiency }
   }
 

@@ -45,7 +45,7 @@ export default function ArtifactCard({ artifactId, artifactObj, onEdit, onDelete
   const { id, slotKey, numStars, level, mainStatKey, substats, lock } = art
   const mainStatLevel = Math.max(Math.min(mainStatAssumptionLevel, numStars * 4), level)
   const mainStatVal = <span className={mainStatLevel !== level ? "text-orange" : ""}>{Artifact.mainStatValue(mainStatKey, numStars, mainStatLevel) ?? ""}{Stat.getStatUnit(mainStatKey)}</span>
-  const { currentEfficiency, maximumEfficiency } = Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, effFilter)
+  const { currentEfficiency, maximumEfficiency } = Artifact.getArtifactEfficiency(art, effFilter)
   const artifactValid = maximumEfficiency !== 0
   const locationName = characterSheet?.name ?? "Inventory"
   return (<Card className="h-100" border={`${numStars}star`} bg="lightcontent" text={"lightfont" as any}>

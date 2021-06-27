@@ -110,16 +110,14 @@ export default function ArtifactDisplay(props) {
       switch (sortType) {
         case "quality": return { value: [art.numStars], art }
         case "level": return { value: [art.level, art.numStars], art }
-        case "efficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, effFilterSet).currentEfficiency], art }
-        case "mefficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, effFilterSet).maximumEfficiency], art }
+        case "efficiency": return { value: [Artifact.getArtifactEfficiency(art, effFilterSet).currentEfficiency], art }
+        case "mefficiency": return { value: [Artifact.getArtifactEfficiency(art, effFilterSet).maximumEfficiency], art }
       }
       return { value: [0], art }
     }).sort((a, b) => {
       for (let i = 0; i < a.value.length; i++) {
-        if (a.value[i] !== b.value[i]) {
-          console.log(a.value[i], b.value[i], ascending)
+        if (a.value[i] !== b.value[i])
           return (a.value[i] - b.value[i]) * (ascending ? 1 : -1)
-        }
       }
       return 0
     }).map(item => item.art)
