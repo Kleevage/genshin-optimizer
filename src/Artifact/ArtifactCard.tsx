@@ -78,7 +78,7 @@ export default function ArtifactCard({ artifactId, artifactObj, onEdit, onDelete
           return (<Col key={i} xs={12}>
             <Badge variant={numRolls ? `${numRolls}roll` : "danger"} className="text-darkcontent"><b>{numRolls ? numRolls : "?"}</b></Badge>{" "}
             <span className={`text-${numRolls}roll`}>{statName}{`+${valueString(stat.value, Stat.getStatUnit(stat.key))}${Stat.getStatUnit(stat.key)}`}</span>
-            <span className="float-right" style={{ opacity: effOpacity }}>{valueString(efficiency, "eff")}%</span>
+            <span className="float-right" style={{ opacity: effOpacity }}>{stat.key && effFilter.has(stat.key) ? valueString(efficiency, "eff") : "-"}</span>
           </Col>)
         })}
       </Row>

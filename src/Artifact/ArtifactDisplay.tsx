@@ -27,7 +27,6 @@ import SlotNameWithIcon from './Component/SlotNameWIthIcon';
 
 const InfoDisplay = React.lazy(() => import('./InfoDisplay'));
 const sortKeys = ["quality", "level", "efficiency", "mefficiency"]
-const allSubstatFilter = new Set(allSubstats)
 
 const initialFilter = () => ({
   filterArtSetKey: "",
@@ -59,6 +58,8 @@ export default function ArtifactDisplay(props) {
   const invScrollRef = useRef(null)
   const [dbDirty, forceUpdate] = useForceUpdate()
   const artifactSheets = usePromise(ArtifactSheet.getAll())
+  const [effFilter, setEffFilter] = useState(() => [...allSubstats])
+  const effFilterSet = useMemo(() => new Set(effFilter), [effFilter])
   const deleteArtifact = useCallback(
     id => {
       const art = ArtifactDatabase.get(id);
@@ -109,8 +110,8 @@ export default function ArtifactDisplay(props) {
       switch (sortType) {
         case "quality": return { value: [art.numStars], art }
         case "level": return { value: [art.level, art.numStars], art }
-        case "efficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, allSubstatFilter).currentEfficiency], art }
-        case "mefficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, allSubstatFilter).maximumEfficiency], art }
+        case "efficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, effFilterSet).currentEfficiency], art }
+        case "mefficiency": return { value: [Artifact.getArtifactEfficiency(art.substats, art.numStars, art.level, effFilterSet).maximumEfficiency], art }
       }
       return { value: [0], art }
     }).sort((a, b) => {
@@ -127,7 +128,7 @@ export default function ArtifactDisplay(props) {
     const numLock = artifacts.length - numUnlock
 
     return { artifacts, totalArtNum: Object.keys(artifactDB)?.length || 0, numUnequip, numUnlock, numLock, ...dbDirty }//use dbDirty to shoo away warnings!
-  }, [filters, dbDirty])
+  }, [filters, dbDirty, effFilterSet])
 
   const { filterArtSetKey, filterSlotKey, filterMainStatKey, filterStars, filterLevelLow, filterLevelHigh, filterSubstats = initialFilter().filterSubstats, maxNumArtifactsToDisplay, filterLocation = "", filterLocked = "", sortType = sortKeys[0], ascending = false } = filters
 
@@ -348,6 +349,9 @@ export default function ArtifactDisplay(props) {
           </Col>
         </Row>
       </Card.Body>
+      <ToggleButtonGroup type="checkbox" value={effFilter} onChange={setEffFilter}>
+        {allSubstats.map(substat => <ToggleButton value={substat}>{Stat.getStatNameWithPercent(substat)}</ToggleButton>)}
+      </ToggleButtonGroup>
     </Card>
     <Card bg="darkcontent" text={"lightfont" as any} className="mb-2">
       <Card.Body>
@@ -375,6 +379,7 @@ export default function ArtifactDisplay(props) {
         <Col key={i} lg={4} md={6} className="mb-2">
           <ArtifactCard
             artifactId={art.id}
+            effFilter={effFilterSet}
             onDelete={() => deleteArtifact(art.id)}
             onEdit={() => editArtifact(art.id)}
           />
