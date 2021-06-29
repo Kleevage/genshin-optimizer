@@ -66,7 +66,7 @@ const formula: IFormulaSheet = {
     dot: stats => basicDMGFormula(data.burst.dot[stats.tlvl.burst], stats, "burst"),
     ...Object.fromEntries(absorbableEle.map(eleKey => [eleKey, stats => basicDMGFormula(data.burst.add[stats.tlvl.burst], stats, "burst", eleKey)]))
   },
-  passive1: Object.fromEntries(absorbableEle.map(eleKey => [eleKey, stats => basicDMGFormula(200, stats, "plunging", eleKey)]))
+  passive1: Object.fromEntries(absorbableEle.map(eleKey => [eleKey, stats => basicDMGFormula(200, stats, "plunging", eleKey)])),
 }
 
 export default formula

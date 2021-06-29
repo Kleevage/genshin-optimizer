@@ -1,28 +1,26 @@
 import card from './Character_Kazuha_Card.png'
 import thumb from './Character_Kazuha_Thumb.png'
-import c1 from './placeholder.png'
-import c2 from './placeholder.png'
-import c3 from './placeholder.png'
-import c4 from './placeholder.png'
-import c5 from './placeholder.png'
-import c6 from './placeholder.png'
+import c1 from './Constellation_Scarlet_Hills.png'
+import c2 from './Constellation_Yamaarashi_Tailwind.png'
+import c3 from './Constellation_Maple_Monogatari.png'
+import c4 from './Constellation_Oozora_Genpou.png'
+import c5 from './Constellation_Wisdom_of_Bansei.png'
+import c6 from './Constellation_Crimson_Momiji.png'
 import normal from './Talent_Garyuu_Bladework.png'
 import skill from './Talent_Chihayaburu.png'
 import burst from './Talent_Kazuha_Slash.png'
-import passive1 from './placeholder.png'
-import passive2 from './placeholder.png'
-import passive3 from './placeholder.png'
+import passive1 from './Talent_Poetics_of_Fuubutsu.png'
+import passive2 from './Talent_Soumon_Swordsmanship.png'
+import passive3 from './Talent_Cloud_Strider.png'
 import Stat from '../../../Stat'
 import formula, { data } from './data'
 import { getTalentStatKey, getTalentStatKeyVariant } from '../../../Build/Build'
 import { IConditionals, IConditionalValue } from '../../../Types/IConditional'
 import { ICharacterSheet } from '../../../Types/character'
 import { Translate, TransWrapper } from '../../../Components/Translate'
-import { sgt, st } from '../SheetUtil'
+import { sgt, st, talentTemplate } from '../SheetUtil'
 import ElementalData from '../../ElementalData'
-import { ElementKey } from '../../../Types/consts'
 import { absorbableEle } from '../dataUtil'
-import { stat } from 'fs/promises'
 const tr = (strKey: string) => <Translate ns="char_kaedeharakazuha_gen" key18={strKey} />
 const conditionals: IConditionals = {
   q: { // Absorption
@@ -38,7 +36,7 @@ const conditionals: IConditionals = {
           return true
         },
         text: st("absorDot"),
-        formulaText: stats => <span>{data.burst.add[stats.tlvl.burst]}% {Stat.printStat(getTalentStatKey("burst", stats, eleKey as ElementKey), stats)}</span>,
+        formulaText: stats => <span>{data.burst.add[stats.tlvl.burst]}% {Stat.printStat(getTalentStatKey("burst", stats, eleKey), stats)}</span>,
         formula: formula.burst[eleKey],
         variant: eleKey
       }],
@@ -57,7 +55,7 @@ const conditionals: IConditionals = {
           return true
         },
         text: sgt("addEleDMG"),
-        formulaText: stats => <span>200% {Stat.printStat(getTalentStatKey("plunging", stats, eleKey as ElementKey), stats)}</span>,
+        formulaText: stats => <span>200% {Stat.printStat(getTalentStatKey("plunging", stats, eleKey), stats)}</span>,
         formula: formula.passive1[eleKey],
         variant: eleKey
       }],
@@ -66,15 +64,36 @@ const conditionals: IConditionals = {
   a4: { // ShadowSamaritan
     canShow: stats => stats.ascension >= 4,
     name: <TransWrapper ns="char_kaedeharakazuha" key18="a4.name" />,
-    //stats: { ele_dmg_: 200*eleMas },//TODO: party buff modifier
-    fields: [{
-      text: <TransWrapper ns="char_kaedeharakazuha" key18="a4.text" />,
-      value: <TransWrapper ns="char_kaedeharakazuha" key18="a4.value" />,
-    }, {
-      text: sgt("duration"),
-      value: "8s",
-    }]
+    states: Object.fromEntries(absorbableEle.map(eleKey => [eleKey, {
+      name: <span className={`text-${eleKey}`}><b>{ElementalData[eleKey].name}</b></span>,
+      stats: { modifiers: { [`${eleKey}_dmg_`]: { eleMas: 0.04 } } },//TODO: party buff modifier
+      fields: [{
+        text: sgt("duration"),
+        value: "8s",
+      }]
+    }]))
   },
+  c2: {
+    canShow: stats => stats.constellation >= 2,
+    name: <TransWrapper ns="char_kaedeharakazuha" key18="c2" />,
+    stats: { eleMas: 200 }//TODO: party buff
+  },
+  c6: {//Crimson Momiji
+    canShow: stats => stats.constellation >= 6,
+    name: <TransWrapper ns="char_kaedeharakazuha" key18="c6" />,
+    stats: {
+      modifiers: {
+        normal_dmg_: { eleMas: 0.2 },
+        charged_dmg_: { eleMas: 0.2 },
+        plunging_dmg_: { eleMas: 0.2 }
+      },
+      infusionSelf: "anemo",
+    },
+    fields: [{
+      text: sgt("duration"),
+      value: "5s",
+    }]
+  }
 }
 
 const char: ICharacterSheet = {
@@ -212,7 +231,9 @@ const char: ICharacterSheet = {
           }]
         }, {
           conditional: conditionals.q
-        },],
+        }, {
+          conditional: conditionals.c2
+        }],
       },
       passive1: {
         name: tr("passive1.name"),
@@ -236,37 +257,18 @@ const char: ICharacterSheet = {
         sections: [{ text: tr("passive3.description"), }],
         stats: { staminaSprintDec_: 20 }
       },
-      constellation1: {
-        name: tr("constellation1.name"),
-        img: c1,
-        sections: [{ text: tr("constellation1.description"), }]
-      },
-      constellation2: {
-        name: tr("constellation2.name"),
-        img: c2,
-        sections: [{ text: tr("constellation2.description"), }]
-      },
-      constellation3: {
-        name: tr("constellation3.name"),
-        img: c3,
-        sections: [{ text: tr("constellation3.description"), }],
-        stats: { burstBoost: 3 }
-      },
-      constellation4: {
-        name: tr("constellation4.name"),
-        img: c4,
-        sections: [{ text: tr("constellation4.description") }]
-      },
-      constellation5: {
-        name: tr("constellation5.name"),
-        img: c5,
-        sections: [{ text: tr("constellation5.description"), }],
-        stats: { skillBoost: 3 }
-      },
+      constellation1: talentTemplate("constellation1", tr, c1),
+      constellation2: talentTemplate("constellation2", tr, c2),
+      constellation3: talentTemplate("constellation3", tr, c3, { burstBoost: 3 }),
+      constellation4: talentTemplate("constellation4", tr, c4),
+      constellation5: talentTemplate("constellation5", tr, c5, { skillBoost: 3 }),
       constellation6: {
         name: tr("constellation6.name"),
         img: c6,
-        sections: [{ text: tr("constellation6.description"), }]
+        sections: [{
+          text: tr("constellation6.description"),
+          conditional: conditionals.c6
+        }]
       }
     }
   },
