@@ -176,7 +176,7 @@ export default class Artifact {
   }
   static getArtifactEfficiency(artifact: IArtifact, filter: Set<SubstatKey>) {
     Artifact.substatsValidation(artifact)
-    console.log(artifact.substats[0].rolls)
+
     const { substats, numStars, level } = artifact
     // Relative to max star, so comparison between different * makes sense.
     const totalRolls = Artifact.totalPossibleRolls(maxStar);
