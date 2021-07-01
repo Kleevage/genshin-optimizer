@@ -98,6 +98,8 @@ export default class Artifact {
 
   //ARTIFACT IN GENERAL
   static substatsValidation(state: IArtifact) {
+    if (state.substats[0].rolls !== undefined) return [] // Already validated
+
     const { numStars, level, substats } = state, errors: string[] = []
 
     const allSubstatRolls: { index: number, substatRolls: number[][] }[] = []
@@ -173,6 +175,8 @@ export default class Artifact {
     return errors
   }
   static getArtifactEfficiency(artifact: IArtifact, filter: Set<SubstatKey>) {
+    Artifact.substatsValidation(artifact)
+    console.log(artifact.substats[0].rolls)
     const { substats, numStars, level } = artifact
     // Relative to max star, so comparison between different * makes sense.
     const totalRolls = Artifact.totalPossibleRolls(maxStar);
