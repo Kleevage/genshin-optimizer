@@ -18,22 +18,23 @@ import formula, { data } from './data'
 import { getTalentStatKey, getTalentStatKeyVariant } from "../../../Build/Build"
 import { IConditionals, IConditionalValue } from '../../../Types/IConditional'
 import { ICharacterSheet } from '../../../Types/character'
+import { absorbableEle } from '../dataUtil'
 const conditionals: IConditionals = {
   q: { // Absorption
     name: "Elemental Absorption",
-    states: Object.fromEntries(["hydro", "pyro", "cryo", "electro"].map(eleKey => [eleKey, {
+    states: Object.fromEntries(absorbableEle.map(eleKey => [eleKey, {
       name: <span className={`text-${eleKey}`}><b>{ElementalData[eleKey].name}</b></span>,
       fields: [{
         canShow: stats => {
-          const value = stats.conditionalValues?.character?.sucrose?.q as IConditionalValue | undefined
+          const value = stats.conditionalValues?.character?.sucrose?.sheet?.talent?.q as IConditionalValue | undefined
           if (!value) return false
           const [num, condEleKey] = value
           if (!num || condEleKey !== eleKey) return false
           return true
         },
         text: "Absorption DoT",
-        formulaText: stats => <span>{(data.burst.dmg_[stats.tlvl.burst])?.toFixed(2)}% {Stat.printStat(`${eleKey}_burst_${stats.hitMode}`, stats)}</span>,
-        formula: formula.burst[`${eleKey}_dmg_bonus`],
+        formulaText: stats => <span>{data.burst.dmg_[stats.tlvl.burst]}% {Stat.printStat(getTalentStatKey("burst", stats, eleKey), stats)}</span>,
+        formula: formula.burst[eleKey],
         variant: eleKey
       }]
     }]))
