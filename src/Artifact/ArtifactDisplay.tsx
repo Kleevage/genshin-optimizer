@@ -1,7 +1,7 @@
 import { faCheckSquare, faLock, faLockOpen, faSortAmountDownAlt, faSortAmountUp, faSquare, faTrash, faUndo, faUserSlash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Button, ButtonGroup, Card, Dropdown, InputGroup, ToggleButton, ToggleButtonGroup } from 'react-bootstrap';
+import { Button, ButtonGroup, ButtonToolbar, Card, Dropdown, InputGroup, ToggleButton, ToggleButtonGroup } from 'react-bootstrap';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -15,7 +15,7 @@ import ArtifactDatabase from '../Database/ArtifactDatabase';
 import CharacterDatabase from '../Database/CharacterDatabase';
 import InfoComponent from '../Components/InfoComponent';
 import Stat from '../Stat';
-import { allMainStatKeys, allSubstats, IArtifact } from '../Types/artifact';
+import { allMainStatKeys, allSubstats, IArtifact, SubstatKey } from '../Types/artifact';
 import { allArtifactRarities, allSlotKeys } from '../Types/consts';
 import { useForceUpdate, usePromise } from '../Util/ReactUtil';
 import { clamp, loadFromLocalStorage, saveToLocalStorage } from '../Util/Util';
@@ -40,10 +40,12 @@ const initialFilter = () => ({
   filterLocked: "",
   ascending: false,
   sortType: sortKeys[0],
-  maxNumArtifactsToDisplay: 50
+  maxNumArtifactsToDisplay: 50,
+  effFilter: [...allSubstats]
 })
 function filterReducer(state, action) {
-  if (action.type === "reset") return initialFilter()
+  //reset all except the efficiency filter, since its a separate UI with its own reset
+  if (action.type === "reset") return { ...initialFilter(), effFilter: state.effFilter }
   return { ...state, ...action }
 }
 function filterInit(initial = initialFilter()) {
@@ -52,14 +54,14 @@ function filterInit(initial = initialFilter()) {
 export default function ArtifactDisplay(props) {
   const { t } = useTranslation(["artifact", "ui"]);
   const [filters, filterDispatch] = useReducer(filterReducer, initialFilter(), filterInit)
+  const { effFilter } = filters
   const [artToEditId, setartToEditId] = useState(props?.location?.artToEditId)
   const [pageIdex, setpageIdex] = useState(0)
   const scrollRef = useRef(null)
   const invScrollRef = useRef(null)
   const [dbDirty, forceUpdate] = useForceUpdate()
   const artifactSheets = usePromise(ArtifactSheet.getAll())
-  const [effFilter, setEffFilter] = useState(() => [...allSubstats])
-  const effFilterSet = useMemo(() => new Set(effFilter), [effFilter])
+  const effFilterSet = useMemo(() => new Set(effFilter), [effFilter]) as Set<SubstatKey>
   const deleteArtifact = useCallback(
     id => {
       const art = ArtifactDatabase.get(id);
@@ -164,8 +166,26 @@ export default function ArtifactDisplay(props) {
     window.confirm(`Are you sure you want to unlock ${numUnlock} artifacts?`) &&
     artifacts.map(art => ArtifactDatabase.setLocked(art.id, false))
 
-
-  const showingValue = artifacts.length !== totalArtNum ? `${artifacts.length}/${totalArtNum}` : `${totalArtNum}`
+  const paginationCard = useMemo(() => {
+    const showingValue = artifacts.length !== totalArtNum ? `${artifacts.length}/${totalArtNum}` : `${totalArtNum}`
+    return <Card bg="darkcontent" text={"lightfont" as any} className="mb-2">
+      <Card.Body>
+        <Row>
+          <Col>
+            <ButtonGroup size="sm">
+              {[...Array(numPages).keys()].map(i => <Button key={i} className="px-3" variant={currentPageIndex === i ? "success" : "primary"} onClick={() => {
+                setpageIdex(i);
+                (invScrollRef.current as any)?.scrollIntoView({ behavior: "smooth" })
+              }} >
+                {i === 0 ? "Page " : ""}{i + 1}
+              </Button>)}
+            </ButtonGroup>
+          </Col>
+          <Col xs="auto"><Trans t={t} i18nKey="showingNum" count={artifactsToShow.length} value={showingValue} >Showing <b>{{ count: artifactsToShow.length }}</b> out of {{ value: showingValue }} Artifacts</Trans></Col>
+        </Row>
+      </Card.Body>
+    </Card>
+  }, [numPages, currentPageIndex, artifactsToShow.length, artifacts.length, totalArtNum, t])
 
   return <Container className="mt-2" >
     <InfoComponent
@@ -184,12 +204,12 @@ export default function ArtifactDisplay(props) {
     <Card bg="darkcontent" text={"lightfont" as any} className="mb-2" ref={invScrollRef}>
       <Card.Header>
         <Row>
-          <Col><span><Trans i18nKey="artifactFilter" >Artifact Filter</Trans></span></Col>
-          <Col xs="auto"><Button size="sm" className="ml-2" variant="danger" onClick={() => filterDispatch({ type: "reset" })} ><FontAwesomeIcon icon={faUndo} className="fa-fw" /> Reset Filters</Button></Col>
+          <Col><span><Trans t={t} i18nKey="artifactFilter">Artifact Filter</Trans></span></Col>
+          <Col xs="auto"><Button size="sm" className="ml-2" variant="danger" onClick={() => filterDispatch({ type: "reset" })} ><FontAwesomeIcon icon={faUndo} className="fa-fw" /> <Trans t={t} i18nKey="resetFilters" /></Button></Col>
         </Row>
       </Card.Header>
       <Card.Body>
-        <Row className="mb-n2">
+        <Row>
           {/* Left half */}
           <Col xs={12} lg={6}>
             {/* Artifact set filter */}
@@ -346,32 +366,31 @@ export default function ArtifactDisplay(props) {
             </Row>
           </Col>
         </Row>
-      </Card.Body>
-      <ToggleButtonGroup type="checkbox" value={effFilter} onChange={setEffFilter}>
-        {allSubstats.map(substat => <ToggleButton value={substat}>{Stat.getStatNameWithPercent(substat)}</ToggleButton>)}
-      </ToggleButtonGroup>
-    </Card>
-    <Card bg="darkcontent" text={"lightfont" as any} className="mb-2">
-      <Card.Body>
-        <Row className="mb-2">
+        <Row className="mb-n2">
           <Col xs={6} lg={3} className="mb-2"><Button className="w-100" variant="danger" disabled={!numUnequip} onClick={unequipArtifacts}><FontAwesomeIcon icon={faUserSlash} /> <Trans t={t} i18nKey="button.unequipArtifacts" >Unequip Artifacts</Trans></Button></Col>
           <Col xs={6} lg={3} className="mb-2"><Button className="w-100" variant="danger" disabled={!artifacts.length} onClick={deleteArtifacts}><FontAwesomeIcon icon={faTrash} /> <Trans t={t} i18nKey="button.deleteArtifacts" >Delete Artifacts</Trans></Button></Col>
           <Col xs={6} lg={3} className="mb-2"><Button className="w-100" variant="danger" disabled={!numLock} onClick={lockArtifacts}><FontAwesomeIcon icon={faLock} /> <Trans t={t} i18nKey="button.lockArtifacts" >Lock Artifacts</Trans></Button></Col>
           <Col xs={6} lg={3} className="mb-2"><Button className="w-100" variant="danger" disabled={!numUnlock} onClick={unlockArtifacts}><FontAwesomeIcon icon={faLockOpen} /> <Trans t={t} i18nKey="button.unlockArtifacts" >Unlock Artifacts</Trans></Button></Col>
           <Col xs={12} className="mt-n2"><small><Trans t={t} i18nKey="buttonHint">Note: the above buttons only applies to <b>filtered artifacts</b></Trans></small></Col>
         </Row>
-        <Row>
-          <Col>
-            {numPages > 1 && <ButtonGroup size="sm">
-              {[...Array(numPages).keys()].map(i => <Button key={i} className="px-3" variant={currentPageIndex === i ? "success" : "primary"} onClick={() => setpageIdex(i)} >
-                {i === 0 ? "Page " : ""}{i + 1}
-              </Button>)}
-            </ButtonGroup>}
-          </Col>
-          <Col xs="auto"><Trans t={t} i18nKey="showingNum" count={artifactsToShow.length} value={showingValue} >Showing <b>{{ count: artifactsToShow.length }}</b> out of {{ value: showingValue }} Artifacts</Trans></Col>
-        </Row>
       </Card.Body>
     </Card>
+    <Card bg="darkcontent" text={"lightfont" as any} className="mb-2" ref={invScrollRef}>
+      <Card.Header>
+        <Row>
+          <Col><span><Trans t={t} i18nKey="efficiencyFilter.title">Efficiency Filter</Trans></span></Col>
+          <Col xs="auto"><Button size="sm" className="ml-2" variant="danger" onClick={() => filterDispatch({ effFilter: [...allSubstats] })} ><FontAwesomeIcon icon={faUndo} className="fa-fw" /> <Trans t={t} i18nKey="ui:reset" /></Button></Col>
+        </Row>
+      </Card.Header>
+      <Card.Body>
+        <ButtonToolbar as={Row} className="w-100 d-flex flex-row">
+          {[[0, 6], [6]].map(slicep => <ToggleButtonGroup key={slicep.toString()} as={Col} type="checkbox" value={effFilter} onChange={n => filterDispatch({ effFilter: n })} className="flex-grow-1 mb-2">
+            {allSubstats.slice(...slicep).map(substat => <ToggleButton key={substat} value={substat} variant={effFilter.includes(substat) ? "success" : "primary"}>{Stat.getStatNameWithPercent(substat)}</ToggleButton>)}
+          </ToggleButtonGroup>)}
+        </ButtonToolbar>
+      </Card.Body>
+    </Card>
+    {paginationCard}
     <Row>
       {artifactsToShow.map((art, i) =>
         <Col key={i} lg={4} md={6} className="mb-2">
@@ -384,22 +403,6 @@ export default function ArtifactDisplay(props) {
         </Col>
       )}
     </Row>
-    {numPages > 1 && <Card bg="darkcontent" text={"lightfont" as any} className="mb-2">
-      <Card.Body>
-        <Row>
-          <Col>
-            <ButtonGroup size="sm">
-              {[...Array(numPages).keys()].map(i => <Button key={i} className="px-3" variant={currentPageIndex === i ? "success" : "primary"} onClick={() => {
-                setpageIdex(i);
-                (invScrollRef.current as any)?.scrollIntoView({ behavior: "smooth" })
-              }} >
-                {i === 0 ? "Page " : ""}{i + 1}
-              </Button>)}
-            </ButtonGroup>
-          </Col>
-          <Col xs="auto"><Trans t={t} i18nKey="showingNum" count={artifactsToShow.length} value={showingValue} >Showing <b>{{ count: artifactsToShow.length }}</b> out of {{ value: showingValue }} Artifacts</Trans></Col>
-        </Row>
-      </Card.Body>
-    </Card>}
+    {numPages > 1 && paginationCard}
   </Container >
 }
