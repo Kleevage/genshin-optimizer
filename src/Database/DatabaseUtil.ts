@@ -75,9 +75,9 @@ function DatabaseInitAndVerify() {
   }
 
   //this will only run if neither of the database has been initated.
-  const charDBJustPopualted = CharacterDatabase.populateDatebaseFromLocalStorage(),
-    artDBJustPopualted = ArtifactDatabase.populateDatebaseFromLocalStorage()
-  if (!charDBJustPopualted && !artDBJustPopualted) return
+  const charDBJustPopulated = CharacterDatabase.populateDatebaseFromLocalStorage(),
+    artDBJustPopulated = ArtifactDatabase.populateDatebaseFromLocalStorage()
+  if (!charDBJustPopulated && !artDBJustPopulated) return
 
   Object.values(deepClone(ArtifactDatabase.getArtifactDatabase())).forEach((art: any) => {
     let valid = true
